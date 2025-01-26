@@ -1,0 +1,4 @@
+fastapi==0.100.0
+hypercorn==0.14.4
+openai==1.59.9
+chromadb==0.6.3
