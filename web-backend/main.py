@@ -6,6 +6,7 @@ from fastapi.middleware.cors import CORSMiddleware
 import logging
 from openai import OpenAI
 import os
+from asyncio import sleep
 
 logger = logging.getLogger('hypercorn.error')
 
@@ -44,14 +45,26 @@ app = FastAPI()
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
-        "http://localhost:5173/",
+        "http://localhost:5173",
     ],
-    allow_methods=["GET"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 @app.get("/")
 async def root():
     return {"greeting": "Hello, World!", "message": "Welcome to FastAPI!"}
+
+async def gen_func():
+    for i in range(0,10):
+        yield f"event: res\ndata: {i}\n\n"
+        await sleep(.1)
+    yield f"event: end\ndata: complete\n\n"
+
+@app.get("/test")
+async def test():
+    return StreamingResponse(gen_func(), media_type="text/event-stream")
 
 
 async def get_llm_response(context, q):
@@ -68,10 +81,11 @@ async def get_llm_response(context, q):
     for chunk in response:
         for choice in chunk.choices:
             if choice.finish_reason == "stop":
+                yield f"event:end\ndata: complete\n\n"
                 continue
             else:
                 current_content = choice.delta.content
-                yield f"data: {current_content.encode('utf-8')}\n\n"
+                yield f"event:res\ndata: {current_content}\n\n"
 
 
 @app.get("/search")
