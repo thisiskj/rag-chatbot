@@ -7,6 +7,7 @@ import ThemeToggle from './ThemeToggle';
 
 function App() {
     const [messages, setMessages] = useState([])
+    const [sources, setSources] = useState([])
     const [loading, setLoading] = useState(false)
 
     const onSubmit = (e) => {
@@ -25,6 +26,13 @@ function App() {
         evtSource.addEventListener("res", (event) => {
             setLoading(false)
             setMessages((prevState) => {
+                return [...prevState, event.data]
+            })
+        });
+
+        evtSource.addEventListener("src", (event) => {
+            setLoading(false)
+            setSources((prevState) => {
                 return [...prevState, event.data]
             })
         });
@@ -63,12 +71,21 @@ function App() {
                     <div className="text-center my-4">
                         <LoadingSpinner />
                     </div>
-                ) : (
+                ) : messages.length > 0 ? (
                     <div className="mt-10 text-left dark:text-gray-300">
                         <ReactMarkdown remarkPlugins={[remarkGfm]}>
                             {messages.join('')}
                         </ReactMarkdown>
+
+                        <div className="mt-10 text-lg font-medium">
+                            Sources
+                        </div>
+                        <ul>
+                            {sources.map(s => <li><a href={s}>{s}</a></li>)}
+                        </ul>
                     </div>
+                ) : (
+                    <></>
                 )}
 
             </div>

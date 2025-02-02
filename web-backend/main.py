@@ -68,8 +68,8 @@ async def test():
     return StreamingResponse(gen_func(), media_type="text/event-stream")
 
 
-async def get_llm_response(context, q):
-    logger.info(PROMPT_TEMPLATE.format(context=context, question=q))
+async def get_llm_response(context, q, sources):
+    # logger.info(PROMPT_TEMPLATE.format(context=context, question=q))
     response = openai_client.chat.completions.create(
         model="gpt-4o",
         temperature=1.0,
@@ -82,11 +82,15 @@ async def get_llm_response(context, q):
     for chunk in response:
         for choice in chunk.choices:
             if choice.finish_reason == "stop":
-                yield f"event:end\ndata: complete\n\n"
                 continue
             else:
                 current_content = choice.delta.content
                 yield f"event:res\ndata: {current_content}\n\n"
+
+    for s in sources:
+        yield f"event:src\ndata:{s}\n\n"
+
+    yield f"event:end\ndata: complete\n\n"
 
 
 @app.get("/search")
@@ -94,8 +98,10 @@ async def search(q: str = ''):
     logger.info(f"Question is {q}")
     results = collection.query(
         query_texts=[q],  # Chroma will embed this for you
-        n_results=20  # how many results to return
+        n_results=5  # how many results to return
     )
+
+    sources = list(set([m['source'] for m in results['metadatas'][0]]))
     context = "\n".join([doc for doc in results['documents'][0]])
 
-    return StreamingResponse(get_llm_response(context, q), media_type="text/event-stream")
+    return StreamingResponse(get_llm_response(context, q, sources), media_type="text/event-stream")
